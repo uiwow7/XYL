@@ -1,0 +1,3 @@
+{'block': [{'=': [(var, l), (list, [])]}, {'=': [(var, i), (int, 0)]}, {'while': [[{'expr': [{'<': [(var, i), (var, n)]}]}]]}, {'do': {'block': [{'::': [(var, l), {(func, add): (list, [[(var, i)]])}]}, {'+=': [(var, i), (int, 1)]}]}}, {'return': [[(var, l)]]}]}
+
+{'while': [[{'expr': [{'<': [(var, i), (var, n)]}]}]]}, {'do': {'block': [{'::': [(var, l), {(func, add): (list, [[(var, i)]])}]}, {'+=': [(var, i), (int, 1)]}]}}

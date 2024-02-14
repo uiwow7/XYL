@@ -1,0 +1,5 @@
+include "std" ;
+
+for @i : of ( @std :: #range [ 10 ] ) :
+    print @i ;
+/
