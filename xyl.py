@@ -1,13 +1,13 @@
-import istr, math, sys, os, random, time, datetime, json, threading, copy
+import istr, math, sys, os, random, time, datetime, json, threading, copy # unused inputs are for pyeval and pyexec functions in code
 
-keywords = {"print": 1, "include": 1, "pyexec": 1, "/": 0, "if": 1, "while": 1, "for": 2, "else": 0, "function": 2, "return": 1, "not": 1, "true": 0, "false": 0, "call": 2, "run": 0, "pyeval": 1}
+keywords = {"print": 1, "include": 1, "pyexec": 1, "if": 1, "while": 1, "for": 2, "else": 0, "function": 2, "return": 1, "not": 1, "true": 0, "false": 0, "call": 2, "run": 0, "pyeval": 1}
 #DONE: print, includde, pyexec, /, if, else, function, not, true, false, pyeval
 #TODO: while, for, call, run
 blockKeywords = ["while", "function", "for", "if", "else"]
 
 operators = ["+", "-", "/", "*", "^", "%", "or", "and", "==", ">", "<", "<=", ">=", "=", "::", "+=", "-=", "*=", "/=", "<<", ">>", "&", "|"] 
 
-SUBCOMMANDS = { # {"::": (expr[0])=thing, (expr[1])={fn: args}}
+SUBCOMMANDS = { # {"::": [(expr[0])=thing, (expr[1])={fn: args}]}
     "list": {
         "add": "self.vars[expr[0].val].append(self.exprEval(list(expr[1].values())[0])[0])",
         "remove": "self.vars[expr[0].val].remove(self.exprEval(list(expr[1].values())[0])[0])",
@@ -77,9 +77,11 @@ class Lexer:
                 self.tokens.append(Token("var", word[1:]))
             elif word[0] == "#":
                 self.tokens.append(Token("func", word[1:]))
+            elif word == "}":
+                self.tokens.append(Token("end"))
             elif word == "::":
                 self.tokens.append(Token("from"))
-            elif word == ";" or word == ":" or word == "," or word == "!" or word == "}":
+            elif word == ";" or word == ":" or word == "," or word == "!" or word == "{":
                 print("SEP TOKEN")
                 self.tokens.append(Token("sep"))
             elif word[-1] == "f":
@@ -107,7 +109,7 @@ class Lexer:
                 else:
                     print("ERROR: `else` can only be preceeded by `do` blocks.")
                     exit(1)
-            elif op.typ == "/":
+            elif op.typ == "end":
                 blockip = cfStack.pop()
                 previp = 0
                 if self.tokens[blockip].typ == "do":
@@ -161,7 +163,7 @@ class Parser:
             op = expr[index]
             if op.typ in blockKeywords:
                 depth += 1
-            elif op.typ == "/":
+            elif op.typ == "end":
                 depth -= 1
                 if depth == 0:
                     break
@@ -670,10 +672,10 @@ class Interpreter:
  
 program = """
 @i = 0
-while ( @i < 10 ) :
+while ( @i < 10 ) {
     print @i ;
     @i += 1
-/
+}
 """
      
 ex = '@l = [ ]\nprint "a string" ;'
