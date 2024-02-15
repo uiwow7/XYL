@@ -1,11 +1,11 @@
-import istr, math, sys, os, random, time, datetime, json, threading
+import istr, math, sys, os, random, time, datetime, json, threading, copy
 
 keywords = {"print": 1, "include": 1, "pyexec": 1, "/": 0, "if": 1, "while": 1, "for": 2, "else": 0, "function": 2, "return": 1, "not": 1, "true": 0, "false": 0, "call": 2, "run": 0, "pyeval": 1}
 #DONE: print, includde, pyexec, /, if, else, function, not, true, false, pyeval
 #TODO: while, for, call, run
 blockKeywords = ["while", "function", "for", "if", "else"]
 
-operators = ["+", "-", "/", "*", "^", "%", "or", "and", "==", ">", "<", "<=", ">=", "=", "::", "+=", "-=", "*=", "/=", "%=", "<<", ">>", "&", "|"] 
+operators = ["+", "-", "/", "*", "^", "%", "or", "and", "==", ">", "<", "<=", ">=", "=", "::", "+=", "-=", "*=", "/=", "<<", ">>", "&", "|"] 
 
 SUBCOMMANDS = { # {"::": (expr[0])=thing, (expr[1])={fn: args}}
     "list": {
@@ -24,6 +24,8 @@ SUBCOMMANDS = { # {"::": (expr[0])=thing, (expr[1])={fn: args}}
         "round": "rv = round(self.vars[expr[0].val])"
     }
 }
+
+ASSIGN_OPS = ["=", "+=", "-=", "*=", "/="]
 
 def tkInList(t, l):
     for r in l:
@@ -303,7 +305,7 @@ class Parser:
                                 break
                         tks.append(j)
                 
-                    i += len(tks) - 1
+                    i += len(tks)
                     #print("nexpr", expr)
                     
                     print(f"\nEXPR STARTED FROM PARSEXPR AT INDEX {i}\n")                            
@@ -334,7 +336,7 @@ class Parser:
                             break
                     tks.append(j)
             
-                i += len(tks) - 1
+                i += len(tks)
                 print(f"\nEXPR STARTED FROM PARSEXPR AT INDEX {i}\n")                            
                 cmds.append({"expr": self.parseExpr(tks)})
 
@@ -437,13 +439,17 @@ class Interpreter:
         else:
             print("ERROR: Can only get method from variables.")
     
-    def operator(self, op: str, expr, replace: list = [], replacements: list = []):
+    def operator(self, op: str, _expr, replace: list = [], replacements: list = []):
+        expr = copy.deepcopy(_expr)
         print("rr", replace, replacements)
         if tkInList(expr[0], replace):
             expr[0] = replacements[tkIndex(expr[0], replace)]
         if tkInList(expr[1], replace):
             expr[1] = replacements[tkIndex(expr[1], replace)]
-        if not tkInList(expr[0], replace): expr[0] = self.exprEval(expr[0], replace, replacements) if not expr[0].val in self.vars or not op == "=" else expr[0].val
+        try:
+            if not tkInList(expr[0], replace): expr[0] = self.exprEval(expr[0], replace, replacements) if not expr[0].val in self.vars or not op in ASSIGN_OPS else expr[0].val
+        except AttributeError:
+            if not tkInList(expr[0], replace): expr[0] = self.exprEval(expr[0], replace, replacements) if not expr[0] in self.vars or not op in ASSIGN_OPS else expr[0]
         if not tkInList(expr[1], replace): expr[1] = self.exprEval(expr[1], replace, replacements)
         print("op", op, expr)
         if op == "+":
@@ -497,19 +503,28 @@ class Interpreter:
                 self.vars[expr[0]] = expr[1]
             return
         if op == "+=":
-            self.vars[expr[0].val] += expr[1].val
+            try:
+                self.vars[expr[0].val] += expr[1].val
+            except AttributeError:
+                self.vars[expr[0]] += expr[1]
             return
         if op == "-=":
-            self.vars[expr[0].val] -= expr[1].val
+            try:
+                self.vars[expr[0].val] -= expr[1].val
+            except AttributeError:
+                self.vars[expr[0]] -= expr[1]
             return
         if op == "*=":
-            self.vars[expr[0].val] *= expr[1].val
+            try:
+                self.vars[expr[0].val] *= expr[1].val
+            except AttributeError:
+                self.vars[expr[0]] *= expr[1]
             return
         if op == "/=":
-            self.vars[expr[0].val] /= expr[1].val
-            return
-        if op == "%=":
-            self.vars[expr[0].val] = self.vars[expr[0].val] % expr[1].val
+            try:
+                self.vars[expr[0].val] /= expr[1].val
+            except AttributeError:
+                self.vars[expr[0]] /= expr[1]
             return
         if op == "::":
             rv = False
@@ -517,7 +532,8 @@ class Interpreter:
             exec(self.getMethod(expr[0], expr[1]))
             return rv if rv else None
     
-    def exprEval(self, expr, replace: list = [], replacements: list = []):
+    def exprEval(self, _expr, replace: list = [], replacements: list = []):
+        expr = copy.deepcopy(_expr)
         print("rr", replace, replacements)
         print("evaluating", expr)
         if type(expr) == dict:
@@ -577,7 +593,7 @@ class Interpreter:
                 return lts
             else:
                 return expr.val
-        elif type(expr) == str:
+        elif type(expr) == str or type(expr) == int:
             return expr
         else:
             print(f"ERROR: Invalid typing on expr. Caused by `{expr}`. Type: {type(expr)}")
@@ -622,9 +638,12 @@ class Interpreter:
                         else:
                             elseCheck = True
                     elif op2 == "while":
-                        cond =  self.exprEval(op[op2][0], replace, replacements)
-                        print("While", cond)
-                        self.run(replace, replacements, op[op2][1]["block"])
+                        while True:
+                            cond =  self.exprEval(op[op2][0], replace, replacements)
+                            print("While", cond, "vars", self.vars, "eval", op[op2][0])
+                            self.run(replace, replacements, op[op2][1]["block"])
+                            if not cond:
+                                break
                     elif op2 == "else": # Because of this implementation, disconnected elses act as comments
                         if elseCheck:
                             self.run(replace, replacements, op[op2]["block"])
