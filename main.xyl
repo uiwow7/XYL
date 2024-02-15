@@ -1,5 +1,3 @@
 include "std" ;
 
-for @i : of ( @std :: #range [ 10 ] ) :
-    print @i ;
-/
+for @i ! #std::range [ 5 ] :

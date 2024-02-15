@@ -1,7 +1,9 @@
 import istr, math, sys, os, random, time, datetime, json, threading
 
-keywords = {"print": 1, "include": 1, "pyexec": 1, "/": 0, "if": 1, "while": 1, "do": 0, "for": 1, "of": 1, "else": 0, "function": 2, "return": 1, "not": 1, "true": 0, "false": 0, "call": 2, "run": 0, "pyeval": 1}
-blockKeywords = ["do", "function", "of", "if", "else"]
+keywords = {"print": 1, "include": 1, "pyexec": 1, "/": 0, "if": 1, "while": 1, "for": 2, "else": 0, "function": 2, "return": 1, "not": 1, "true": 0, "false": 0, "call": 2, "run": 0, "pyeval": 1}
+#DONE: print, includde, pyexec, /, if, else, function, not, true, false, pyeval
+#TODO: while, for, call, run
+blockKeywords = ["while", "function", "for", "if", "else"]
 
 operators = ["+", "-", "/", "*", "^", "%", "or", "and", "==", ">", "<", "<=", ">=", "=", "::", "+=", "-=", "*=", "/=", "%=", "<<", ">>", "&", "|"] 
 
@@ -603,9 +605,6 @@ class Interpreter:
                 op2 = list(op.keys())[0]
                 print("op2", op2, op2 in keywords)
                 if op2 in keywords:
-                    if keywords[op2] == 0:
-                        print("TODO", op2)
-                        exit(1)
                     if op2 == "print":
                         print("printing", self.exprEval(op[op2], replace, replacements))
                         print(self.exprEval(op[op2], replace, replacements))
@@ -622,11 +621,18 @@ class Interpreter:
                             self.run(replace, replacements, op[op2][1]["block"])
                         else:
                             elseCheck = True
+                    elif op2 == "while":
+                        cond =  self.exprEval(op[op2][0], replace, replacements)
+                        print("While", cond)
+                        self.run(replace, replacements, op[op2][1]["block"])
                     elif op2 == "else": # Because of this implementation, disconnected elses act as comments
                         if elseCheck:
-                            self.run(replace, replacements, op[op2][1]["block"])
+                            self.run(replace, replacements, op[op2]["block"])
                     elif op2 == "function":
                         continue
+                    else:
+                        print('TODO')
+                        exit(1)
                 elif type(op2) == Token:
                     if op2.typ == "func":
                         args = self.exprEval(op[op2])
@@ -644,10 +650,10 @@ class Interpreter:
 #endregion   
  
 program = """
-if true :
-    print "If statements are working" ! print "That was a sep token so you can do stuff like this" }
-else :
-    print "Else is working" ;
+@i = 0
+while ( @i < 10 ) :
+    print @i ;
+    @i += 1
 /
 """
      
