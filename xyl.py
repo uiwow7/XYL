@@ -1,9 +1,9 @@
 import istr, math, sys, os, random, time, datetime, json, threading, copy # unused inputs are for pyeval and pyexec functions in code
 
-keywords = {"print": 1, "include": 1, "pyexec": 1, "if": 1, "while": 1, "for": 2, "else": 0, "function": 2, "return": 1, "not": 1, "true": 0, "false": 0, "call": 2, "run": 0, "pyeval": 1}
+keywords = {"print": 1, "include": 1, "pyexec": 1, "if": 1, "while": 1, "for": 2, "else": 0, "function": 2, "return": 1, "not": 1, "true": 0, "false": 0, "call": 2, "run": 0, "pyeval": 1, "class": 2}
 #DONE: print, includde, pyexec, /, if, else, function, not, true, false, pyeval
-#TODO: while, for, call, run
-blockKeywords = ["while", "function", "for", "if", "else"]
+#TODO: return, for (call and run were useless; I'm removing them in favor of implementing classes)
+blockKeywords = ["while", "function", "for", "if", "else", "class."]
 
 operators = ["+", "-", "/", "*", "^", "%", "or", "and", "==", ">", "<", "<=", ">=", "=", "::", "+=", "-=", "*=", "/=", "<<", ">>", "&", "|"] 
 
@@ -610,9 +610,10 @@ class Interpreter:
         for a in args1:
             nargs.append(Token("var", a))
         print("run", nargs, args, block)
-        self.run(nargs, args, block)
+        rv = self.run(nargs, args, block, True)
+        return rv
     
-    def run(self, replace = [], replacements = [], code = False):
+    def run(self, replace = [], replacements = [], code = False, inFunction = False):
         elseCheck = False
         print("rr", replace, replacements)
         if not code:
@@ -649,6 +650,12 @@ class Interpreter:
                     elif op2 == "else": # Because of this implementation, disconnected elses act as comments
                         if elseCheck:
                             self.run(replace, replacements, op[op2]["block"])
+                    elif op2 == "return":
+                        if inFunction:
+                            print(f"returning {op[op2]}")
+                            return self.exprEval(op[op2], replace, replacements)
+                        else:
+                            print("ERROR: Return expression outside of a function.")
                     elif op2 == "function":
                         continue
                     else:
@@ -666,16 +673,18 @@ class Interpreter:
                     # if return is None, the effect has already happened
                 if not op2 == "if":
                     elseCheck = False
+        return None
                 
    
 #endregion   
  
 program = """
-@i = 0
-while ( @i < 10 ) {
-    print @i ;
-    @i += 1
+function "Add" : [ @a , @b ] {
+    @result = ( @a + @b ) ;
+    return @result ;
 }
+
+print ( #Add [ 1 , 2 ] ) ;
 """
      
 ex = '@l = [ ]\nprint "a string" ;'
