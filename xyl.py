@@ -1,4 +1,4 @@
-import istr, math, sys, os, random, time, datetime, json, threading, copy # unused inputs are for pyeval and pyexec functions in code
+import istr, math, sys, os, random, time, datetime, json, threading, copy, requests # unused inputs are for pyeval and pyexec functions in code
 
 keywords = {"print": 1, "include": 1, "pyexec": 1, "if": 1, "while": 1, "for": 2, "else": 0, "function": 2, "return": 1, "not": 1, "true": 0, "false": 0, "call": 2, "run": 0, "pyeval": 1, "class": 2}
 #DONE: print, includde, pyexec, /, if, else, function, not, true, false, pyeval
@@ -28,7 +28,7 @@ SUBCOMMANDS = { # {"::": [(expr[0])=thing, (expr[1])={fn: args}]}
 ASSIGN_OPS = ["=", "+=", "-=", "*=", "/="]
 
 def tkInList(t, l):
-    print("tkinlist", t, l)
+    #print("tkinlist", t, l)
     for r in l:
         if type(r) == Token:
             if r.typ == t.typ and r.val == t.val:
@@ -57,7 +57,7 @@ class Lexer:
         
     def tokenize(self):
         for word in self.cm:
-            #print(f"'{word}'", word == "&", word=="|", word == "/")
+            print(f"'{word}'")
             if word in keywords.keys() or word in operators:
                 self.tokens.append(Token(word))
             elif word == "(":
@@ -82,7 +82,7 @@ class Lexer:
                 self.tokens.append(Token("end"))
             elif word == "::":
                 self.tokens.append(Token("from"))
-            elif word == ";" or word == ":" or word == "," or word == "!" or word == "{":
+            elif word == ";" or word == ":" or word == "," or word == "!" or word == "{" or word == "&&":
                 print("SEP TOKEN")
                 self.tokens.append(Token("sep"))
             elif word[-1] == "f":
@@ -447,32 +447,50 @@ class Interpreter:
         print("rr", replace, replacements, expr)
         flag0 = False
         flag1 = False
+        if op == "::":
+            flag0 = True
+            flag1 = True
+        print("stage 1; replace")
         if tkInList(expr[0], replace):
             expr[0] = replacements[tkIndex(expr[0], replace)]
             flag0 = True
         if tkInList(expr[1], replace):
             expr[1] = replacements[tkIndex(expr[1], replace)]
             flag1 = True
-        if type(expr[0]) == dict:
+        if type(expr[0]) == dict and op != "::":
             expr[0] = self.exprEval(expr[0], replace, replacements)
             flag0 = True
-        if type(expr[1]) == dict:
+        if type(expr[1]) == dict and op != "::":
             expr[1] = self.exprEval(expr[1], replace, replacements)
             flag1 = True
+        print("stage 2", "flags", flag0, flag1, "expr", expr)
         if not flag0:
             try:
-                expr[0] = self.exprEval(expr[0], replace, replacements) if not expr[0].val in self.vars or not op in ASSIGN_OPS else expr[0].val
+                if type(expr[0]) == Token:
+                    if expr[0].typ == "list":
+                        expr[0] = self.exprEval(expr[0], replace, replacements)
+                        raise ZeroDivisionError
+                expr[0] = self.exprEval(expr[0], replace, replacements) if (not expr[0].val in self.vars) or (not op in ASSIGN_OPS) else expr[0].val
             except AttributeError:
                 expr[0] = self.exprEval(expr[0], replace, replacements) if not expr[0] in self.vars or not op in ASSIGN_OPS else expr[0]
+            except ZeroDivisionError:
+                print("DONE")
         if not flag1:
             try:
-                expr[1] = self.exprEval(expr[0], replace, replacements) if not expr[1].val in self.vars or not op in ASSIGN_OPS else expr[1].val
+                if type(expr[1]) == Token:
+                    if expr[1].typ == "list":
+                        expr[1] = self.exprEval(expr[1], replace, replacements)
+                        raise ZeroDivisionError
+                    else:
+                        expr[1] = self.exprEval(expr[1], replace, replacements) if not expr[1].val in self.vars or not op in ASSIGN_OPS else expr[1].val
             except AttributeError:
-                expr[1] = self.exprEval(expr[0], replace, replacements) if not expr[1] in self.vars or not op in ASSIGN_OPS else expr[1]
-        if type(expr[0]) == list:
-            expr[0] = self.exprEval(expr[0], replace, replacements)
-        if type(expr[1]) == list:
-            expr[1] = self.exprEval(expr[1], replace, replacements)
+                expr[1] = self.exprEval(expr[1], replace, replacements) if not expr[1] in self.vars or not op in ASSIGN_OPS else expr[1]
+            except ZeroDivisionError:
+                print("DONE")
+        # if type(expr[0]) == list:
+        #     expr[0] = self.exprEval(expr[0], replace, replacements)
+        # if type(expr[1]) == list:
+        #     expr[1] = self.exprEval(expr[1], replace, replacements)
         print("op", op, expr)
         if op == "+":
             return expr[0] + expr[1]
@@ -615,6 +633,10 @@ class Interpreter:
             elif expr.typ == "false":
                 return False
             elif expr.typ == "list":
+                print(expr.val, len(expr.val), "list")
+                if len(expr.val) == 0: 
+                    print("empty list return")
+                    return [] 
                 lts = []
                 for j in expr.val:
                     lts.append(self.exprEval(j, replace, replacements))
@@ -705,13 +727,10 @@ class Interpreter:
 #endregion   
  
 program = """
-function "add" : [ @n , @n2 ] {
-    return ( @n + @n2 ) ;
-}
-
-@f = ( #add [ 1 , 2 ] )
+include "std" ;
+@range = ( #std::range [ 5 ] ) 
 """
-     
+program = istr.removecomments(program)
 ex = '@l = [ ]\nprint "a string" ;'
        
 lexer = Lexer(program)

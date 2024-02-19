@@ -1,11 +1,9 @@
 function "range" : [ @n ] {
-    @l = [ ]
-    @i = 0
-    while ( @i < @n ) {
-        @l :: #add [ @i ]
-        @i += 1
-    }
-    return @l ;
+    return ( pyeval ( "list(range(" + ( @p :: #toString [ ] ) + "))" ) && ) ;
+}
+
+function "input" : [ @p ] {
+    return ( pyeval ( "input(" + ( @p :: #toString [ ] ) + ")" ) && ) ;
 }
 
 @sys::argv = ( pyeval "sys.argv" ; )

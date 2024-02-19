@@ -1,10 +1,18 @@
 from codecs import escape_decode
 
-def liststr(l:list):
+def removecomments(s: str):
+    lines = s.splitlines()
+    endt = []
+    for l in lines:
+        endt.append(l.split("//")[0])
+    return liststr(endt, end="\n")
+def liststr(l:list, end=""):
     s= ""
     for i in l:
-        s+=str(i)
-    return i
+        print(i)
+        s+=str(i)+str(end)
+        print(s)
+    return s
 
 def find_col(line,coln):
     col = coln
@@ -44,6 +52,7 @@ def find_col_end(line,coln):
     return col
 
 def filter(cm: str):
+    print("filtering", "'", cm, "'")
     args = []
     loc = 0
     endloc = 0
