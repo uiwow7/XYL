@@ -28,6 +28,7 @@ SUBCOMMANDS = { # {"::": [(expr[0])=thing, (expr[1])={fn: args}]}
 ASSIGN_OPS = ["=", "+=", "-=", "*=", "/="]
 
 def tkInList(t, l):
+    print("tkinlist", t, l)
     for r in l:
         if type(r) == Token:
             if r.typ == t.typ and r.val == t.val:
@@ -56,7 +57,7 @@ class Lexer:
         
     def tokenize(self):
         for word in self.cm:
-            print(f"'{word}'", word == "&", word=="|", word == "/")
+            #print(f"'{word}'", word == "&", word=="|", word == "/")
             if word in keywords.keys() or word in operators:
                 self.tokens.append(Token(word))
             elif word == "(":
@@ -126,7 +127,7 @@ class Lexer:
                     self.tokens[blockip].val = i + 1
                     op.val = i + 1
                 else:
-                    print("ERROR: `/` closing unexpected block")
+                    print("ERROR: `}` closing unexpected block")
             
 #endregion
 
@@ -443,16 +444,35 @@ class Interpreter:
     
     def operator(self, op: str, _expr, replace: list = [], replacements: list = []):
         expr = copy.deepcopy(_expr)
-        print("rr", replace, replacements)
+        print("rr", replace, replacements, expr)
+        flag0 = False
+        flag1 = False
         if tkInList(expr[0], replace):
             expr[0] = replacements[tkIndex(expr[0], replace)]
+            flag0 = True
         if tkInList(expr[1], replace):
             expr[1] = replacements[tkIndex(expr[1], replace)]
-        try:
-            if not tkInList(expr[0], replace): expr[0] = self.exprEval(expr[0], replace, replacements) if not expr[0].val in self.vars or not op in ASSIGN_OPS else expr[0].val
-        except AttributeError:
-            if not tkInList(expr[0], replace): expr[0] = self.exprEval(expr[0], replace, replacements) if not expr[0] in self.vars or not op in ASSIGN_OPS else expr[0]
-        if not tkInList(expr[1], replace): expr[1] = self.exprEval(expr[1], replace, replacements)
+            flag1 = True
+        if type(expr[0]) == dict:
+            expr[0] = self.exprEval(expr[0], replace, replacements)
+            flag0 = True
+        if type(expr[1]) == dict:
+            expr[1] = self.exprEval(expr[1], replace, replacements)
+            flag1 = True
+        if not flag0:
+            try:
+                expr[0] = self.exprEval(expr[0], replace, replacements) if not expr[0].val in self.vars or not op in ASSIGN_OPS else expr[0].val
+            except AttributeError:
+                expr[0] = self.exprEval(expr[0], replace, replacements) if not expr[0] in self.vars or not op in ASSIGN_OPS else expr[0]
+        if not flag1:
+            try:
+                expr[1] = self.exprEval(expr[0], replace, replacements) if not expr[1].val in self.vars or not op in ASSIGN_OPS else expr[1].val
+            except AttributeError:
+                expr[1] = self.exprEval(expr[0], replace, replacements) if not expr[1] in self.vars or not op in ASSIGN_OPS else expr[1]
+        if type(expr[0]) == list:
+            expr[0] = self.exprEval(expr[0], replace, replacements)
+        if type(expr[1]) == list:
+            expr[1] = self.exprEval(expr[1], replace, replacements)
         print("op", op, expr)
         if op == "+":
             return expr[0] + expr[1]
@@ -555,6 +575,12 @@ class Interpreter:
             elif type(op2) == Token:
                 if tkInList(op2, replace):
                     return replacements[tkIndex(expr[0], op2)]
+                elif op2.typ == "func":
+                    t = expr[op2].val
+                    rv = self.runFunction(op2.val, t)
+                    if rv != None: return rv
+                    print("VOID VALUE RETURNED")
+                    exit(1)
                 return op2.val
             elif op2 == "not":
                 return not self.exprEval(expr[op2], replace, replacements)
@@ -679,12 +705,11 @@ class Interpreter:
 #endregion   
  
 program = """
-function "Add" : [ @a , @b ] {
-    @result = ( @a + @b ) ;
-    return @result ;
+function "add" : [ @n , @n2 ] {
+    return ( @n + @n2 ) ;
 }
 
-print ( #Add [ 1 , 2 ] ) ;
+@f = ( #add [ 1 , 2 ] )
 """
      
 ex = '@l = [ ]\nprint "a string" ;'
